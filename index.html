@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sample Count Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header class="fade-in">
+            <h1>Sample Analysis Dashboard</h1>
+            <p class="subtitle">Tracking monthly sample counts from 2022 to 2026</p>
+        </header>
+
+        <nav class="nav-tabs fade-in" id="year-nav">
+            <!-- Tabs will be injected here -->
+        </nav>
+
+        <main class="dashboard-grid fade-in">
+            <div class="card">
+                <div class="chart-container">
+                    <canvas id="mainChart"></canvas>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Detailed Monthly Breakdown</h2>
+                <div class="table-container" id="table-view">
+                    <!-- Tables will be injected here -->
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
