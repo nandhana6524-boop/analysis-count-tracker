@@ -5,13 +5,8 @@ let currentFilters = {
     test: 'all'
 };
 let barChartInstance = null;
-let pieChartInstance = null;
 
 const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-const chartColors = [
-    '#0ea5e9', '#6366f1', '#8b5cf6', '#d946ef', '#f43f5e', 
-    '#f59e0b', '#10b981', '#14b8a6', '#06b6d4', '#3b82f6'
-];
 
 async function init() {
     try {
@@ -107,17 +102,17 @@ function renderYear(year, btn) {
     const container = document.getElementById('table-view');
     const headerTitle = document.getElementById('table-title');
     const filterBar = document.querySelector('.filter-bar');
-    const chartCards = document.querySelectorAll('.dashboard-grid > .card:not(:last-child)');
+    const chartCard = document.querySelector('.chart-container').parentElement;
     
     if (year === 'TOTAL COUNT') {
         headerTitle.textContent = "Yearly Cumulative Samples";
         filterBar.style.display = 'none';
-        chartCards.forEach(c => c.style.display = 'none');
+        chartCard.style.display = 'none';
         renderStatCards(dataRows, container);
     } else {
         headerTitle.textContent = "Detailed Monthly Breakdown";
         filterBar.style.display = 'flex';
-        chartCards.forEach(c => c.style.display = 'block');
+        chartCard.style.display = 'block';
         populateTestDropdown(dataRows);
         renderTable(dataRows, container);
     }
@@ -163,9 +158,8 @@ function renderTable(dataRows, container) {
         })
         .filter(item => item.total > 0);
 
-    // Update Charts
+    // Update Bar Chart
     updateBarChart(processedData);
-    updatePieChart(processedData);
 
     // Filter by test
     if (currentFilters.test !== 'all') {
@@ -231,75 +225,6 @@ function updateBarChart(data) {
             scales: {
                 y: { beginAtZero: true, grid: { color: 'rgba(0, 0, 0, 0.05)' }, ticks: { color: '#64748b' } },
                 x: { grid: { display: false }, ticks: { color: '#64748b' } }
-            }
-        }
-    });
-}
-
-function updatePieChart(data) {
-    const ctx = document.getElementById('testPieChart').getContext('2d');
-    const headerTitle = document.querySelector('#testPieChart').parentElement.querySelector('h3');
-    
-    let pieData = [];
-    let pieLabels = [];
-    let chartTitle = "";
-
-    if (currentFilters.test === 'all') {
-        // Mode 1: Distribution of TESTS for the selected month(s)
-        chartTitle = currentFilters.month === 'all' ? "Yearly Test Distribution" : `Test Distribution (${months[currentFilters.month]})`;
-        data.forEach(item => {
-            let value = currentFilters.month === 'all' ? item.total : item.monthly[parseInt(currentFilters.month)];
-            if (value > 0) {
-                pieData.push(value);
-                pieLabels.push(item.category);
-            }
-        });
-    } else {
-        // Mode 2: Distribution of MONTHS for the selected test
-        const selectedTestData = data.find(item => item.category === currentFilters.test);
-        chartTitle = `Monthly Distribution: ${currentFilters.test}`;
-        if (selectedTestData) {
-            selectedTestData.monthly.forEach((val, i) => {
-                if (val > 0) {
-                    pieData.push(val);
-                    pieLabels.push(months[i]);
-                }
-            });
-        }
-    }
-
-    headerTitle.textContent = chartTitle;
-
-    if (pieChartInstance) pieChartInstance.destroy();
-
-    pieChartInstance = new Chart(ctx, {
-        type: 'pie',
-        data: {
-            labels: pieLabels,
-            datasets: [{
-                data: pieData,
-                backgroundColor: chartColors,
-                borderWidth: 2,
-                borderColor: '#ffffff'
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'right',
-                    labels: { boxWidth: 12, padding: 10, font: { size: 10 } }
-                },
-                tooltip: {
-                    callbacks: {
-                        label: (context) => {
-                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                            const percentage = ((context.raw / total) * 100).toFixed(1);
-                            return `${context.label}: ${context.raw} (${percentage}%)`;
-                        }
-                    }
-                }
             }
         }
     });
