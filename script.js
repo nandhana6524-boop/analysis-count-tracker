@@ -151,7 +151,7 @@ function calculateTotals() {
         if (!['TOTAL COUNT', 'NGS', 'NICS'].includes(key)) {
             const yearSum = processYearData(dashboardData[key]).reduce((sum, item) => sum + item.total, 0);
             totalAll += yearSum;
-            yearlyBreakdown.push({ year: key.replace('SAMPLES ANALYSED IN ', ''), fullKey: key, count: yearSum });
+            yearlyBreakdown.push({ year: key.replace('SAMPLES ANALYSED IN ', ''), count: yearSum });
             if (key === analyticsFilters.year) analyticsTotal = yearSum;
         }
     });
@@ -163,7 +163,6 @@ function renderYear(year, btn) {
     currentYear = year;
     document.getElementById('data-view').style.display = 'block';
     document.getElementById('analytics-view').style.display = 'none';
-    
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     if (btn) btn.classList.add('active');
     
@@ -189,7 +188,7 @@ function renderYear(year, btn) {
             </div>
         `;
     } else {
-        headerTitle.textContent = `${year.replace('SAMPLES ANALYSED IN ', '')} Breakdown`;
+        headerTitle.textContent = `${year} Breakdown`;
         filterBar.style.display = 'flex';
         populateTestDropdown(dashboardData[year]);
         renderTable(dashboardData[year], container);
@@ -201,23 +200,78 @@ function renderYearlySummary() {
     const headerTitle = document.getElementById('table-title');
     headerTitle.textContent = "Year-wise Total Breakdown";
     
+    // All possible years to show cards for
+    const allYears = [2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026];
+    
     const totals = calculateTotals();
+    // Build a quick lookup from the yearlyBreakdown array
+    const yearLookup = {};
+    totals.yearlyBreakdown.forEach(item => { yearLookup[item.year] = item.count; });
+    
     let html = `
         <div style="margin-bottom: 1.5rem;">
             <button class="tab-btn" onclick="renderYear('TOTAL COUNT')">← Back to Summary</button>
         </div>
         <div class="summary-stats fade-in" style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));">`;
     
-    totals.yearlyBreakdown.sort((a, b) => a.year - b.year).forEach(item => {
-        html += `
-            <div class="summary-card interactive" onclick="renderYear('${item.fullKey}')">
-                <span class="summary-label">${item.year}</span>
-                <span class="summary-value">${item.count.toLocaleString()}</span>
-                <span class="card-footer">View details →</span>
-            </div>`;
+    allYears.forEach(year => {
+        const yearStr = String(year);
+        const count = yearLookup[yearStr] !== undefined ? yearLookup[yearStr] : 0;
+        const hasData = dashboardData[yearStr] && count > 0;
+        
+        if (hasData) {
+            html += `
+                <div class="summary-card interactive" onclick="renderYearTable('${yearStr}')">
+                    <span class="summary-label">${yearStr}</span>
+                    <span class="summary-value">${count.toLocaleString()}</span>
+                    <span class="card-footer">View monthly table →</span>
+                </div>`;
+        } else {
+            html += `
+                <div class="summary-card">
+                    <span class="summary-label">${yearStr}</span>
+                    <span class="summary-value">${count > 0 ? count.toLocaleString() : '—'}</span>
+                </div>`;
+        }
     });
     
     container.innerHTML = html + '</div>';
+}
+
+function renderYearTable(year) {
+    const container = document.getElementById('table-content');
+    const headerTitle = document.getElementById('table-title');
+    headerTitle.textContent = `${year} — Monthly Breakdown`;
+    
+    const dataRows = dashboardData[year];
+    if (!dataRows) { container.innerHTML = '<p>No data available.</p>'; return; }
+    
+    const data = processYearData(dataRows);
+    
+    let html = `
+        <div style="margin-bottom: 1.5rem;">
+            <button class="tab-btn" onclick="renderYearlySummary()">← Back to Year Overview</button>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Sample Category</th>
+                    ${months.map(m => `<th>${m}</th>`).join('')}
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody>`;
+    
+    data.forEach(item => {
+        html += `<tr>
+            <td style="font-weight: 600;">${item.category}</td>
+            ${item.monthly.map(v => `<td>${v || '-'}</td>`).join('')}
+            <td style="font-weight: 800; color: var(--accent-color);">${item.total}</td>
+        </tr>`;
+    });
+    
+    html += `</tbody></table>`;
+    container.innerHTML = html;
 }
 
 function showAnalytics(btn) {
