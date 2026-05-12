@@ -87,6 +87,16 @@ p.subtitle {
     gap: 2rem;
 }
 
+@media (min-width: 1000px) {
+    .dashboard-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+.view-section {
+    width: 100%;
+}
+
 .card {
     background: var(--card-bg);
     border: 1px solid var(--border-color);
