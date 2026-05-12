@@ -71,14 +71,16 @@ p.subtitle {
 }
 
 .tab-btn:hover {
-    background: rgba(255, 255, 255, 0.1);
+    background: #ffffff;
     transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
 .tab-btn.active {
     background: var(--accent-color);
     color: #ffffff;
     border-color: var(--accent-color);
+    box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
 }
 
 .dashboard-grid {
