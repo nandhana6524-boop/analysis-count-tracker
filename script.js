@@ -4,9 +4,14 @@ let currentFilters = {
     month: 'all',
     test: 'all'
 };
-let chartInstance = null;
+let barChartInstance = null;
+let pieChartInstance = null;
 
 const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const chartColors = [
+    '#0ea5e9', '#6366f1', '#8b5cf6', '#d946ef', '#f43f5e', 
+    '#f59e0b', '#10b981', '#14b8a6', '#06b6d4', '#3b82f6'
+];
 
 async function init() {
     try {
@@ -41,7 +46,6 @@ function setupFilters(years) {
     const monthSelect = document.getElementById('month-filter');
     const testSelect = document.getElementById('test-filter');
 
-    // Populate years (excluding special non-year sheets)
     years.filter(year => !['TOTAL COUNT', 'NGS', 'NICS'].includes(year)).forEach(year => {
         const option = document.createElement('option');
         option.value = year;
@@ -69,7 +73,6 @@ function setupFilters(years) {
 
 function applyFilters() {
     if (currentYear === 'TOTAL COUNT') return;
-    
     const dataRows = dashboardData[currentYear];
     const container = document.getElementById('table-view');
     renderTable(dataRows, container);
@@ -93,7 +96,6 @@ function populateTestDropdown(dataRows) {
 
 function renderYear(year, btn) {
     currentYear = year;
-    
     if (btn) {
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
@@ -105,17 +107,17 @@ function renderYear(year, btn) {
     const container = document.getElementById('table-view');
     const headerTitle = document.getElementById('table-title');
     const filterBar = document.querySelector('.filter-bar');
-    const chartCard = document.querySelector('.chart-container').parentElement;
+    const chartCards = document.querySelectorAll('.dashboard-grid > .card:not(:last-child)');
     
     if (year === 'TOTAL COUNT') {
         headerTitle.textContent = "Yearly Cumulative Samples";
         filterBar.style.display = 'none';
-        chartCard.style.display = 'none';
+        chartCards.forEach(c => c.style.display = 'none');
         renderStatCards(dataRows, container);
     } else {
         headerTitle.textContent = "Detailed Monthly Breakdown";
         filterBar.style.display = 'flex';
-        chartCard.style.display = 'block';
+        chartCards.forEach(c => c.style.display = 'block');
         populateTestDropdown(dataRows);
         renderTable(dataRows, container);
     }
@@ -124,11 +126,7 @@ function renderYear(year, btn) {
 function renderStatCards(rows, container) {
     const yearsRow = rows.find(r => r['Unnamed: 0'] === 'YEAR');
     const countsRow = rows.find(r => r['Unnamed: 0'] === 'COUNT');
-    
-    if (!yearsRow || !countsRow) {
-        container.innerHTML = "<p>Data not available for stat cards.</p>";
-        return;
-    }
+    if (!yearsRow || !countsRow) return;
 
     let html = '<div class="stats-grid">';
     Object.keys(yearsRow).forEach(key => {
@@ -157,7 +155,6 @@ function renderTable(dataRows, container) {
                 row['Unnamed: 6'], row['Unnamed: 7'], row['Unnamed: 8'], row['Unnamed: 9'],
                 row['Unnamed: 10'], row['Unnamed: 11'], row['Unnamed: 12'], row['Unnamed: 13']
             ].map(v => (typeof v === 'number' ? v : 0));
-
             return {
                 category: row['Unnamed: 1'].toString().toUpperCase(),
                 monthly: monthlyValues,
@@ -166,15 +163,15 @@ function renderTable(dataRows, container) {
         })
         .filter(item => item.total > 0);
 
-    // Apply Test Filter
+    // Update Charts
+    updateBarChart(processedData);
+    updatePieChart(processedData);
+
+    // Filter by test
     if (currentFilters.test !== 'all') {
         processedData = processedData.filter(item => item.category === currentFilters.test);
     }
 
-    // Update Chart based on filtered data
-    updateChart(processedData);
-
-    // Determine displayed months
     let displayedMonthIndices = months.map((_, i) => i);
     if (currentFilters.month !== 'all') {
         displayedMonthIndices = [parseInt(currentFilters.month)];
@@ -205,22 +202,16 @@ function renderTable(dataRows, container) {
     container.innerHTML = html;
 }
 
-function updateChart(data) {
+function updateBarChart(data) {
     const ctx = document.getElementById('monthlyTotalChart').getContext('2d');
-    
-    // Calculate totals per month
     const monthlyTotals = new Array(12).fill(0);
     data.forEach(item => {
-        item.monthly.forEach((val, i) => {
-            monthlyTotals[i] += val;
-        });
+        item.monthly.forEach((val, i) => { monthlyTotals[i] += val; });
     });
 
-    if (chartInstance) {
-        chartInstance.destroy();
-    }
+    if (barChartInstance) barChartInstance.destroy();
 
-    chartInstance = new Chart(ctx, {
+    barChartInstance = new Chart(ctx, {
         type: 'bar',
         data: {
             labels: months,
@@ -230,31 +221,71 @@ function updateChart(data) {
                 backgroundColor: 'rgba(14, 165, 233, 0.7)',
                 borderColor: '#0ea5e9',
                 borderWidth: 1,
-                borderRadius: 8,
-                hoverBackgroundColor: '#0ea5e9'
+                borderRadius: 8
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true, grid: { color: 'rgba(0, 0, 0, 0.05)' }, ticks: { color: '#64748b' } },
+                x: { grid: { display: false }, ticks: { color: '#64748b' } }
+            }
+        }
+    });
+}
+
+function updatePieChart(data) {
+    const ctx = document.getElementById('testPieChart').getContext('2d');
+    
+    // Calculate test distribution for the selected month (or all)
+    let pieData = [];
+    let pieLabels = [];
+    
+    data.forEach(item => {
+        let value = 0;
+        if (currentFilters.month === 'all') {
+            value = item.total;
+        } else {
+            value = item.monthly[parseInt(currentFilters.month)];
+        }
+        
+        if (value > 0) {
+            pieData.push(value);
+            pieLabels.push(item.category);
+        }
+    });
+
+    if (pieChartInstance) pieChartInstance.destroy();
+
+    pieChartInstance = new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: pieLabels,
+            datasets: [{
+                data: pieData,
+                backgroundColor: chartColors,
+                borderWidth: 2,
+                borderColor: '#ffffff'
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-                legend: { display: false },
-                tooltip: {
-                    backgroundColor: '#1e293b',
-                    padding: 12,
-                    titleFont: { size: 14, weight: 'bold' },
-                    bodyFont: { size: 13 }
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    grid: { color: 'rgba(0, 0, 0, 0.05)' },
-                    ticks: { color: '#64748b' }
+                legend: {
+                    position: 'right',
+                    labels: { boxWidth: 12, padding: 15, font: { size: 11 } }
                 },
-                x: {
-                    grid: { display: false },
-                    ticks: { color: '#64748b' }
+                tooltip: {
+                    callbacks: {
+                        label: (context) => {
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = ((context.raw / total) * 100).toFixed(1);
+                            return `${context.label}: ${context.raw} (${percentage}%)`;
+                        }
+                    }
                 }
             }
         }
