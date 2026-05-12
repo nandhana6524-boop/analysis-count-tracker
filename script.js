@@ -40,9 +40,56 @@ function renderYear(year, btn) {
     }
 
     const dataRows = dashboardData[year];
+    const container = document.getElementById('table-view');
+    const headerTitle = document.querySelector('h2');
     
-    // Process data for table
-    // Filter out rows that are just headers, totals, or are empty
+    if (year === 'TOTAL COUNT') {
+        headerTitle.textContent = "Yearly Cumulative Samples";
+        renderStatCards(dataRows, container);
+    } else {
+        headerTitle.textContent = "Detailed Monthly Breakdown";
+        renderTable(dataRows, container);
+    }
+}
+
+function renderStatCards(rows, container) {
+    // Expected structure for TOTAL COUNT:
+    // row 0: { Unnamed: 0: 'YEAR', Unnamed: 1: '2018', ... }
+    // row 1: { Unnamed: 0: 'COUNT', Unnamed: 1: '33', ... }
+    
+    const yearsRow = rows.find(r => r['Unnamed: 0'] === 'YEAR');
+    const countsRow = rows.find(r => r['Unnamed: 0'] === 'COUNT');
+    
+    if (!yearsRow || !countsRow) {
+        container.innerHTML = "<p>Data not available for stat cards.</p>";
+        return;
+    }
+
+    let html = '<div class="stats-grid">';
+    
+    // Iterate through all keys except 'Unnamed: 0'
+    Object.keys(yearsRow).forEach(key => {
+        if (key === 'Unnamed: 0') return;
+        
+        const year = yearsRow[key];
+        const count = countsRow[key];
+        
+        if (year && count !== null) {
+            html += `
+                <div class="stat-card fade-in">
+                    <span class="stat-label">Year ${year}</span>
+                    <span class="stat-value">${count}</span>
+                </div>
+            `;
+        }
+    });
+
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+function renderTable(dataRows, container) {
+    // Filter and process data
     const processedData = dataRows
         .filter(row => row['Unnamed: 1'] && row['Unnamed: 1'] !== 'TOTAL' && row['Unnamed: 1'] !== 'S. No.' && !row['Unnamed: 1'].toString().includes('Sheet') && row['Unnamed: 1'] !== 'TEST NAME ')
         .map(row => {
@@ -50,11 +97,7 @@ function renderYear(year, btn) {
                 row['Unnamed: 2'], row['Unnamed: 3'], row['Unnamed: 4'], row['Unnamed: 5'],
                 row['Unnamed: 6'], row['Unnamed: 7'], row['Unnamed: 8'], row['Unnamed: 9'],
                 row['Unnamed: 10'], row['Unnamed: 11'], row['Unnamed: 12'], row['Unnamed: 13']
-            ].map(v => {
-                if (typeof v === 'number') return v;
-                // Try to parse if it's a string, but usually we just want numbers
-                return 0;
-            });
+            ].map(v => (typeof v === 'number' ? v : 0));
 
             return {
                 category: row['Unnamed: 1'],
@@ -62,13 +105,8 @@ function renderYear(year, btn) {
                 total: monthlyValues.reduce((a, b) => a + b, 0)
             };
         })
-        .filter(item => item.total > 0); // REMOVE ROWS WITH ZERO TOTAL
+        .filter(item => item.total > 0);
 
-    updateTable(processedData);
-}
-
-function updateTable(data) {
-    const container = document.getElementById('table-view');
     let html = `<table>
         <thead>
             <tr>
@@ -80,7 +118,7 @@ function updateTable(data) {
         <tbody>
     `;
 
-    data.forEach(item => {
+    processedData.forEach(item => {
         html += `
             <tr>
                 <td style="font-weight: 600;">${item.category}</td>
