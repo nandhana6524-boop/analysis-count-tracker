@@ -143,18 +143,40 @@ function filterChecklist() {
 function calculateTotals() {
     let totalAll = 0, ngsTotal = 0, nicsTotal = 0, analyticsTotal = 0;
     const yearlyBreakdown = [];
+    const addedYears = new Set();
 
     if (dashboardData['NGS']) ngsTotal = processYearData(dashboardData['NGS']).reduce((sum, item) => sum + item.total, 0);
     if (dashboardData['NICS']) nicsTotal = processYearData(dashboardData['NICS']).reduce((sum, item) => sum + item.total, 0);
 
+    // Get totals from sheets that have their own year data (2024, 2025, 2026)
     Object.keys(dashboardData).forEach(key => {
         if (!['TOTAL COUNT', 'NGS', 'NICS'].includes(key)) {
             const yearSum = processYearData(dashboardData[key]).reduce((sum, item) => sum + item.total, 0);
             totalAll += yearSum;
-            yearlyBreakdown.push({ year: key.replace('SAMPLES ANALYSED IN ', ''), count: yearSum });
+            const yearLabel = key.replace('SAMPLES ANALYSED IN ', '');
+            yearlyBreakdown.push({ year: yearLabel, count: yearSum });
+            addedYears.add(yearLabel);
             if (key === analyticsFilters.year) analyticsTotal = yearSum;
         }
     });
+
+    // Also extract older year totals from the TOTAL COUNT sheet (2018–2023)
+    if (dashboardData['TOTAL COUNT']) {
+        const rows = dashboardData['TOTAL COUNT'];
+        const yearsRow = rows.find(r => r['Unnamed: 0'] === 'YEAR');
+        const countsRow = rows.find(r => r['Unnamed: 0'] === 'COUNT');
+        if (yearsRow && countsRow) {
+            Object.keys(yearsRow).forEach(key => {
+                if (key === 'Unnamed: 0') return;
+                const yr = String(yearsRow[key]);
+                const cnt = countsRow[key];
+                if (yr && cnt !== null && cnt !== undefined && !addedYears.has(yr)) {
+                    yearlyBreakdown.push({ year: yr, count: cnt });
+                    totalAll += cnt;
+                }
+            });
+        }
+    }
 
     return { totalAll, ngsTotal, nicsTotal, analyticsTotal, yearlyBreakdown };
 }
