@@ -24,11 +24,42 @@ async function init() {
         setupNav(years);
         setupDataFilters(years);
         setupAnalyticsFilters(years);
+        updateSummaryStats();
         
         if (years.length > 0) renderYear(years[0]);
     } catch (error) {
         console.error('Error loading data:', error);
     }
+}
+
+function updateSummaryStats() {
+    let totalAll = 0;
+    let ngsTotal = 0;
+    let nicsTotal = 0;
+    let analyticsTotal = 0;
+
+    // Calculate NGS and NICS from specific sheets if available
+    if (dashboardData['NGS']) {
+        ngsTotal = processYearData(dashboardData['NGS']).reduce((sum, item) => sum + item.total, 0);
+    }
+    if (dashboardData['NICS']) {
+        nicsTotal = processYearData(dashboardData['NICS']).reduce((sum, item) => sum + item.total, 0);
+    }
+
+    // Calculate overall total from all years
+    Object.keys(dashboardData).forEach(key => {
+        if (!['TOTAL COUNT', 'NGS', 'NICS'].includes(key)) {
+            const yearData = processYearData(dashboardData[key]);
+            const yearSum = yearData.reduce((sum, item) => sum + item.total, 0);
+            totalAll += yearSum;
+            if (key === analyticsFilters.year) analyticsTotal = yearSum;
+        }
+    });
+
+    document.getElementById('total-samples-count').textContent = totalAll.toLocaleString();
+    document.getElementById('ngs-total-count').textContent = ngsTotal.toLocaleString();
+    document.getElementById('nics-total-count').textContent = nicsTotal.toLocaleString();
+    document.getElementById('analytics-total-count').textContent = analyticsTotal.toLocaleString();
 }
 
 function setupNav(years) {
