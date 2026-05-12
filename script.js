@@ -151,7 +151,7 @@ function calculateTotals() {
         if (!['TOTAL COUNT', 'NGS', 'NICS'].includes(key)) {
             const yearSum = processYearData(dashboardData[key]).reduce((sum, item) => sum + item.total, 0);
             totalAll += yearSum;
-            yearlyBreakdown.push({ year: key.replace('SAMPLES ANALYSED IN ', ''), count: yearSum });
+            yearlyBreakdown.push({ year: key.replace('SAMPLES ANALYSED IN ', ''), fullKey: key, count: yearSum });
             if (key === analyticsFilters.year) analyticsTotal = yearSum;
         }
     });
@@ -163,6 +163,7 @@ function renderYear(year, btn) {
     currentYear = year;
     document.getElementById('data-view').style.display = 'block';
     document.getElementById('analytics-view').style.display = 'none';
+    
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     if (btn) btn.classList.add('active');
     
@@ -188,7 +189,7 @@ function renderYear(year, btn) {
             </div>
         `;
     } else {
-        headerTitle.textContent = `${year} Breakdown`;
+        headerTitle.textContent = `${year.replace('SAMPLES ANALYSED IN ', '')} Breakdown`;
         filterBar.style.display = 'flex';
         populateTestDropdown(dashboardData[year]);
         renderTable(dashboardData[year], container);
@@ -209,9 +210,10 @@ function renderYearlySummary() {
     
     totals.yearlyBreakdown.sort((a, b) => a.year - b.year).forEach(item => {
         html += `
-            <div class="summary-card">
+            <div class="summary-card interactive" onclick="renderYear('${item.fullKey}')">
                 <span class="summary-label">${item.year}</span>
                 <span class="summary-value">${item.count.toLocaleString()}</span>
+                <span class="card-footer">View details →</span>
             </div>`;
     });
     
