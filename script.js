@@ -4,6 +4,7 @@ let currentFilters = {
     month: 'all',
     test: 'all'
 };
+let chartInstance = null;
 
 const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -80,7 +81,6 @@ function populateTestDropdown(dataRows) {
         .filter(row => row['Unnamed: 1'] && row['Unnamed: 1'] !== 'TOTAL' && row['Unnamed: 1'] !== 'S. No.' && !row['Unnamed: 1'].toString().includes('Sheet') && row['Unnamed: 1'] !== 'TEST NAME ')
         .map(row => row['Unnamed: 1'].toString().toUpperCase()))].sort();
     
-    // Clear and keep "All Tests"
     testSelect.innerHTML = '<option value="all">All Tests</option>';
     tests.forEach(test => {
         const option = document.createElement('option');
@@ -94,25 +94,28 @@ function populateTestDropdown(dataRows) {
 function renderYear(year, btn) {
     currentYear = year;
     
-    // Update nav and dropdown UI
     if (btn) {
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
     }
-    document.getElementById('year-filter').value = year;
+    const yearSelect = document.getElementById('year-filter');
+    if (yearSelect) yearSelect.value = year;
 
     const dataRows = dashboardData[year];
     const container = document.getElementById('table-view');
     const headerTitle = document.getElementById('table-title');
     const filterBar = document.querySelector('.filter-bar');
+    const chartCard = document.querySelector('.chart-container').parentElement;
     
     if (year === 'TOTAL COUNT') {
         headerTitle.textContent = "Yearly Cumulative Samples";
         filterBar.style.display = 'none';
+        chartCard.style.display = 'none';
         renderStatCards(dataRows, container);
     } else {
         headerTitle.textContent = "Detailed Monthly Breakdown";
         filterBar.style.display = 'flex';
+        chartCard.style.display = 'block';
         populateTestDropdown(dataRows);
         renderTable(dataRows, container);
     }
@@ -168,6 +171,9 @@ function renderTable(dataRows, container) {
         processedData = processedData.filter(item => item.category === currentFilters.test);
     }
 
+    // Update Chart based on filtered data
+    updateChart(processedData);
+
     // Determine displayed months
     let displayedMonthIndices = months.map((_, i) => i);
     if (currentFilters.month !== 'all') {
@@ -197,6 +203,62 @@ function renderTable(dataRows, container) {
 
     html += `</tbody></table>`;
     container.innerHTML = html;
+}
+
+function updateChart(data) {
+    const ctx = document.getElementById('monthlyTotalChart').getContext('2d');
+    
+    // Calculate totals per month
+    const monthlyTotals = new Array(12).fill(0);
+    data.forEach(item => {
+        item.monthly.forEach((val, i) => {
+            monthlyTotals[i] += val;
+        });
+    });
+
+    if (chartInstance) {
+        chartInstance.destroy();
+    }
+
+    chartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: months,
+            datasets: [{
+                label: 'Total Samples',
+                data: monthlyTotals,
+                backgroundColor: 'rgba(14, 165, 233, 0.7)',
+                borderColor: '#0ea5e9',
+                borderWidth: 1,
+                borderRadius: 8,
+                hoverBackgroundColor: '#0ea5e9'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: '#1e293b',
+                    padding: 12,
+                    titleFont: { size: 14, weight: 'bold' },
+                    bodyFont: { size: 13 }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: { color: 'rgba(0, 0, 0, 0.05)' },
+                    ticks: { color: '#64748b' }
+                },
+                x: {
+                    grid: { display: false },
+                    ticks: { color: '#64748b' }
+                }
+            }
+        }
+    });
 }
 
 init();
