@@ -160,16 +160,22 @@ function calculateTotals() {
         }
     });
 
-    // Also add historical year totals (2018–2023) from the pre-parsed HISTORICAL_YEARS key
-    if (dashboardData['HISTORICAL_YEARS']) {
-        const hist = dashboardData['HISTORICAL_YEARS'];
-        Object.keys(hist).forEach(yr => {
-            if (!addedYears.has(yr)) {
-                const cnt = hist[yr];
-                yearlyBreakdown.push({ year: yr, count: cnt });
-                totalAll += cnt;
-            }
-        });
+    // Also extract older year totals from the TOTAL COUNT sheet (2018–2023)
+    if (dashboardData['TOTAL COUNT']) {
+        const rows = dashboardData['TOTAL COUNT'];
+        const yearsRow = rows.find(r => r['Unnamed: 0'] === 'YEAR');
+        const countsRow = rows.find(r => r['Unnamed: 0'] === 'COUNT');
+        if (yearsRow && countsRow) {
+            Object.keys(yearsRow).forEach(key => {
+                if (key === 'Unnamed: 0') return;
+                const yr = String(yearsRow[key]);
+                const cnt = countsRow[key];
+                if (yr && cnt !== null && cnt !== undefined && !addedYears.has(yr)) {
+                    yearlyBreakdown.push({ year: yr, count: cnt });
+                    totalAll += cnt;
+                }
+            });
+        }
     }
 
     return { totalAll, ngsTotal, nicsTotal, analyticsTotal, yearlyBreakdown };
