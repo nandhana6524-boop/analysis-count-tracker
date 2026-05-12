@@ -210,7 +210,7 @@ function renderYearlySummary() {
     totals.yearlyBreakdown.sort((a, b) => a.year - b.year).forEach(item => {
         html += `
             <div class="summary-card">
-                <span class="summary-label">YEAR ${item.year}</span>
+                <span class="summary-label">${item.year}</span>
                 <span class="summary-value">${item.count.toLocaleString()}</span>
             </div>`;
     });
