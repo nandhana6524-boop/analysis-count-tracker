@@ -142,6 +142,7 @@ function filterChecklist() {
 
 function calculateTotals() {
     let totalAll = 0, ngsTotal = 0, nicsTotal = 0, analyticsTotal = 0;
+    const yearlyBreakdown = [];
 
     if (dashboardData['NGS']) ngsTotal = processYearData(dashboardData['NGS']).reduce((sum, item) => sum + item.total, 0);
     if (dashboardData['NICS']) nicsTotal = processYearData(dashboardData['NICS']).reduce((sum, item) => sum + item.total, 0);
@@ -150,11 +151,12 @@ function calculateTotals() {
         if (!['TOTAL COUNT', 'NGS', 'NICS'].includes(key)) {
             const yearSum = processYearData(dashboardData[key]).reduce((sum, item) => sum + item.total, 0);
             totalAll += yearSum;
+            yearlyBreakdown.push({ year: key.replace('SAMPLES ANALYSED IN ', ''), count: yearSum });
             if (key === analyticsFilters.year) analyticsTotal = yearSum;
         }
     });
 
-    return { totalAll, ngsTotal, nicsTotal, analyticsTotal };
+    return { totalAll, ngsTotal, nicsTotal, analyticsTotal, yearlyBreakdown };
 }
 
 function renderYear(year, btn) {
@@ -170,7 +172,21 @@ function renderYear(year, btn) {
     container.innerHTML = '';
 
     if (year === 'TOTAL COUNT') {
-        renderHome(container, headerTitle, filterBar);
+        headerTitle.textContent = "System Summary";
+        filterBar.style.display = 'none';
+        const totals = calculateTotals();
+        container.innerHTML = `
+            <div class="summary-stats fade-in" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
+                <div class="summary-card interactive" onclick="renderYearlySummary()">
+                    <span class="summary-label">TOTAL SAMPLES</span>
+                    <span class="summary-value">${totals.totalAll.toLocaleString()}</span>
+                    <span class="card-footer">Click for yearly breakdown →</span>
+                </div>
+                <div class="summary-card"><span class="summary-label">NGS TOTAL</span><span class="summary-value">${totals.ngsTotal.toLocaleString()}</span></div>
+                <div class="summary-card"><span class="summary-label">NICS TOTAL</span><span class="summary-value">${totals.nicsTotal.toLocaleString()}</span></div>
+                <div class="summary-card"><span class="summary-label">YEARLY ANALYTICS</span><span class="summary-value">${totals.analyticsTotal.toLocaleString()}</span></div>
+            </div>
+        `;
     } else {
         headerTitle.textContent = `${year} Breakdown`;
         filterBar.style.display = 'flex';
@@ -179,47 +195,24 @@ function renderYear(year, btn) {
     }
 }
 
-function renderHome(container, headerTitle, filterBar) {
-    headerTitle.textContent = "System Summary";
-    filterBar.style.display = 'none';
-    const totals = calculateTotals();
-    container.innerHTML = `
-        <div class="summary-stats fade-in" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
-            <div class="summary-card clickable" onclick="renderYearlyBreakdown()">
-                <span class="summary-label">TOTAL SAMPLES</span>
-                <span class="summary-value">${totals.totalAll.toLocaleString()}</span>
-                <span class="card-footer">Click to view yearly breakdown →</span>
-            </div>
-            <div class="summary-card"><span class="summary-label">NGS TOTAL</span><span class="summary-value">${totals.ngsTotal.toLocaleString()}</span></div>
-            <div class="summary-card"><span class="summary-label">NICS TOTAL</span><span class="summary-value">${totals.nicsTotal.toLocaleString()}</span></div>
-            <div class="summary-card"><span class="summary-label">YEARLY ANALYTICS</span><span class="summary-value">${totals.analyticsTotal.toLocaleString()}</span></div>
-        </div>
-    `;
-}
-
-function renderYearlyBreakdown() {
+function renderYearlySummary() {
     const container = document.getElementById('table-content');
     const headerTitle = document.getElementById('table-title');
-    headerTitle.textContent = "Yearly Cumulative Breakdown";
+    headerTitle.textContent = "Year-wise Total Breakdown";
     
-    const data = dashboardData['TOTAL COUNT'];
-    const yearsRow = data.find(r => r['Unnamed: 0'] === 'YEAR');
-    const countsRow = data.find(r => r['Unnamed: 0'] === 'COUNT');
-    
+    const totals = calculateTotals();
     let html = `
         <div style="margin-bottom: 1.5rem;">
             <button class="tab-btn" onclick="renderYear('TOTAL COUNT')">← Back to Summary</button>
         </div>
-        <div class="summary-stats fade-in" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
-    `;
+        <div class="summary-stats fade-in" style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));">`;
     
-    Object.keys(yearsRow).forEach(key => {
-        if (key === 'Unnamed: 0') return;
-        const y = yearsRow[key];
-        const c = countsRow[key];
-        if (y && c !== null) {
-            html += `<div class="summary-card"><span class="summary-label">YEAR ${y}</span><span class="summary-value">${c.toLocaleString()}</span></div>`;
-        }
+    totals.yearlyBreakdown.sort((a, b) => a.year - b.year).forEach(item => {
+        html += `
+            <div class="summary-card">
+                <span class="summary-label">YEAR ${item.year}</span>
+                <span class="summary-value">${item.count.toLocaleString()}</span>
+            </div>`;
     });
     
     container.innerHTML = html + '</div>';
