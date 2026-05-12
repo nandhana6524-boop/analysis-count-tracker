@@ -104,12 +104,12 @@ function updateChart(trends) {
             scales: {
                 y: {
                     beginAtZero: true,
-                    grid: { color: 'rgba(255, 255, 255, 0.05)' },
-                    ticks: { color: '#94a3b8' }
+                    grid: { color: 'rgba(0, 0, 0, 0.05)' },
+                    ticks: { color: '#64748b' }
                 },
                 x: {
                     grid: { display: false },
-                    ticks: { color: '#94a3b8' }
+                    ticks: { color: '#64748b' }
                 }
             }
         }
