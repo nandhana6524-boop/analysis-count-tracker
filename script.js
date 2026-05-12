@@ -287,11 +287,39 @@ function updateBarChart(data) {
 
 function updatePieChart(data) {
     const ctx = document.getElementById('testPieChart').getContext('2d');
+    const headerTitle = document.getElementById('pie-chart-title');
+    const subTitle = headerTitle.nextElementSibling;
+    
     let pData = [], pLabels = [];
-    data.forEach(item => {
-        let val = analyticsFilters.month === 'all' ? item.total : item.monthly[parseInt(analyticsFilters.month)];
-        if (val > 0) { pData.push(val); pLabels.push(item.category); }
-    });
+    
+    if (analyticsFilters.selectedTests.size === 1) {
+        // Mode: Monthly distribution for the single selected test
+        const testName = [...analyticsFilters.selectedTests][0];
+        const testData = data.find(item => item.category === testName);
+        headerTitle.textContent = `Monthly Distribution: ${testName}`;
+        subTitle.textContent = "Distribution of samples by month";
+        
+        if (testData) {
+            testData.monthly.forEach((val, i) => {
+                if (val > 0) {
+                    pData.push(val);
+                    pLabels.push(months[i]);
+                }
+            });
+        }
+    } else {
+        // Mode: Test distribution for selected months
+        headerTitle.textContent = "Test-wise Sample Count";
+        subTitle.textContent = "Distribution of samples by test type";
+        
+        data.forEach(item => {
+            let val = analyticsFilters.month === 'all' ? item.total : item.monthly[parseInt(analyticsFilters.month)];
+            if (val > 0) {
+                pData.push(val);
+                pLabels.push(item.category);
+            }
+        });
+    }
     
     const overallTotal = pData.reduce((a, b) => a + b, 0);
     document.getElementById('pie-total-label').textContent = `Total: ${overallTotal}`;
