@@ -15,11 +15,15 @@ async function init() {
         dashboardData = await response.json();
         const years = Object.keys(dashboardData);
         
+        // Calculate Previous Month for Analytics
+        const today = new Date();
+        const prevMonth = today.getMonth() === 0 ? 11 : today.getMonth() - 1;
+        analyticsFilters.month = prevMonth.toString();
+
         setupNav(years);
         setupDataFilters(years);
         setupAnalyticsFilters(years);
         
-        // Default view: first year tab
         if (years.length > 0) {
             renderYear(years[0]);
         }
@@ -30,7 +34,7 @@ async function init() {
 
 function setupNav(years) {
     const nav = document.getElementById('year-nav');
-    nav.innerHTML = ''; // Clear existing
+    nav.innerHTML = '';
     
     years.forEach((year) => {
         const btn = document.createElement('button');
@@ -40,7 +44,6 @@ function setupNav(years) {
         nav.appendChild(btn);
     });
 
-    // Add Analytics Tab
     const analyticsBtn = document.createElement('button');
     analyticsBtn.className = 'tab-btn';
     analyticsBtn.textContent = 'ANALYTICS';
@@ -82,6 +85,9 @@ function setupAnalyticsFilters(years) {
         yearSelect.appendChild(opt);
     });
     analyticsFilters.year = validYears[0];
+    
+    // Set default month select value
+    monthSelect.value = analyticsFilters.month;
 
     yearSelect.onchange = (e) => { analyticsFilters.year = e.target.value; updateAnalytics(); };
     monthSelect.onchange = (e) => { analyticsFilters.month = e.target.value; updateAnalytics(); };
@@ -94,16 +100,11 @@ function applyDataFilters() {
 
 function renderYear(year, btn) {
     currentYear = year;
-    
-    // Switch View
     document.getElementById('data-view').style.display = 'block';
     document.getElementById('analytics-view').style.display = 'none';
-    
-    // Update Tabs
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     if (btn) btn.classList.add('active');
     
-    // Sync Filter Dropdown
     const yearFilter = document.getElementById('year-filter');
     if (yearFilter && !['TOTAL COUNT', 'NGS', 'NICS'].includes(year)) {
         yearFilter.value = year;
@@ -112,8 +113,6 @@ function renderYear(year, btn) {
     const container = document.getElementById('table-content');
     const headerTitle = document.getElementById('table-title');
     const filterBar = document.querySelector('#data-view .filter-bar');
-    
-    // Clear container before rendering
     container.innerHTML = '';
 
     if (year === 'TOTAL COUNT') {
@@ -129,14 +128,10 @@ function renderYear(year, btn) {
 }
 
 function showAnalytics(btn) {
-    // Switch View
     document.getElementById('data-view').style.display = 'none';
     document.getElementById('analytics-view').style.display = 'block';
-    
-    // Update Tabs
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     if (btn) btn.classList.add('active');
-    
     updateAnalytics();
 }
 
@@ -162,7 +157,6 @@ function populateTestDropdown(dataRows) {
     const testSelect = document.getElementById('test-filter');
     const data = processYearData(dataRows);
     const tests = [...new Set(data.map(item => item.category))].sort();
-    
     testSelect.innerHTML = '<option value="all">All Tests</option>';
     tests.forEach(test => {
         const opt = document.createElement('option');
@@ -176,14 +170,11 @@ function renderStatCards(rows, container) {
     const yearsRow = rows.find(r => r['Unnamed: 0'] === 'YEAR');
     const countsRow = rows.find(r => r['Unnamed: 0'] === 'COUNT');
     if (!yearsRow || !countsRow) return;
-
     let html = '<div class="stats-grid">';
     Object.keys(yearsRow).forEach(key => {
         if (key === 'Unnamed: 0') return;
-        const y = yearsRow[key];
-        const c = countsRow[key];
-        if (y && c !== null) {
-            html += `<div class="stat-card fade-in"><span class="stat-label">Year ${y}</span><span class="stat-value">${c}</span></div>`;
+        if (yearsRow[key] && countsRow[key] !== null) {
+            html += `<div class="stat-card fade-in"><span class="stat-label">Year ${yearsRow[key]}</span><span class="stat-value">${countsRow[key]}</span></div>`;
         }
     });
     container.innerHTML = html + '</div>';
@@ -191,17 +182,9 @@ function renderStatCards(rows, container) {
 
 function renderTable(dataRows, container) {
     let data = processYearData(dataRows);
-    
-    // Apply Filters (Data View only)
-    if (currentDataFilters.test !== 'all') {
-        data = data.filter(item => item.category === currentDataFilters.test);
-    }
-    
+    if (currentDataFilters.test !== 'all') data = data.filter(item => item.category === currentDataFilters.test);
     let indices = months.map((_, i) => i);
-    if (currentDataFilters.month !== 'all') {
-        indices = [parseInt(currentDataFilters.month)];
-    }
-
+    if (currentDataFilters.month !== 'all') indices = [parseInt(currentDataFilters.month)];
     let html = `<table><thead><tr><th>Sample Category</th>${indices.map(i => `<th>${months[i]}</th>`).join('')}${currentDataFilters.month === 'all' ? '<th>Total</th>' : ''}</tr></thead><tbody>`;
     data.forEach(item => {
         html += `<tr><td style="font-weight: 600;">${item.category}</td>${indices.map(i => `<td>${item.monthly[i] || '-'}</td>`).join('')}${currentDataFilters.month === 'all' ? `<td style="font-weight: 800; color: var(--accent-color);">${item.total}</td>` : ''}</tr>`;
@@ -213,7 +196,6 @@ function updateBarChart(data) {
     const ctx = document.getElementById('monthlyTotalChart').getContext('2d');
     const totals = new Array(12).fill(0);
     data.forEach(item => item.monthly.forEach((v, i) => totals[i] += v));
-    
     if (barChartInstance) barChartInstance.destroy();
     barChartInstance = new Chart(ctx, {
         type: 'bar',
@@ -224,16 +206,13 @@ function updateBarChart(data) {
 
 function updatePieChart(data) {
     const ctx = document.getElementById('testPieChart').getContext('2d');
-    const headerTitle = document.querySelector('#testPieChart').parentElement.querySelector('h3');
-    
+    const headerTitle = document.getElementById('pie-chart-title');
     let pData = [], pLabels = [];
     data.forEach(item => {
         let val = analyticsFilters.month === 'all' ? item.total : item.monthly[parseInt(analyticsFilters.month)];
         if (val > 0) { pData.push(val); pLabels.push(item.category); }
     });
-    
     headerTitle.textContent = analyticsFilters.month === 'all' ? "Yearly Test Distribution" : `Test Distribution (${months[analyticsFilters.month]})`;
-
     if (pieChartInstance) pieChartInstance.destroy();
     pieChartInstance = new Chart(ctx, {
         type: 'pie',
