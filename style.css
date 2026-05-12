@@ -255,11 +255,32 @@ body {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
-    transition: transform 0.2s;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
 }
 
-.summary-card:hover {
-    transform: translateY(-3px);
+.summary-card.clickable {
+    cursor: pointer;
+    border-left: 4px solid var(--indigo);
+}
+
+.summary-card.clickable:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    background: #f8fafc;
+}
+
+.card-footer {
+    font-size: 0.7rem;
+    color: var(--indigo);
+    font-weight: 700;
+    margin-top: auto;
+    opacity: 0.7;
+}
+
+.summary-card:hover .card-footer {
+    opacity: 1;
 }
 
 .summary-label {
