@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NGS Analysis Dashboard</title>
+    <title>Sample Analysis Tracker</title>
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -15,7 +15,7 @@
     <div class="container">
         <header class="main-header fade-in">
             <div class="header-left">
-                <div class="logo-icon">📊</div>
+                <div class="logo-icon">🧬</div>
                 <h1>NGS Analysis Dashboard</h1>
             </div>
             <div class="header-right">
@@ -23,6 +23,25 @@
                 <button class="refresh-btn" onclick="location.reload()">🔄 Refresh Now</button>
             </div>
         </header>
+
+        <section class="summary-stats fade-in">
+            <div class="summary-card">
+                <span class="summary-label">TOTAL SAMPLES</span>
+                <span class="summary-value" id="total-samples-count">0</span>
+            </div>
+            <div class="summary-card">
+                <span class="summary-label">NGS TOTAL</span>
+                <span class="summary-value" id="ngs-total-count">0</span>
+            </div>
+            <div class="summary-card">
+                <span class="summary-label">NICS TOTAL</span>
+                <span class="summary-value" id="nics-total-count">0</span>
+            </div>
+            <div class="summary-card">
+                <span class="summary-label">YEARLY ANALYTICS</span>
+                <span class="summary-value" id="analytics-total-count">0</span>
+            </div>
+        </section>
 
         <nav class="nav-tabs fade-in" id="year-nav">
             <!-- Tabs injected by JS -->
@@ -138,6 +157,6 @@
         </main>
     </div>
 
-    <script src="script.js?v=7.0"></script>
+    <script src="script.js?v=6.0"></script>
 </body>
 </html>
