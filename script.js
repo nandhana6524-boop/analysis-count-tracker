@@ -144,41 +144,14 @@ function calculateTotals() {
     let totalAll = 0, ngsTotal = 0, nicsTotal = 0, analyticsTotal = 0;
     const yearlyBreakdown = [];
 
-    // 1. Extract historical years from 'TOTAL COUNT' sheet
-    if (dashboardData['TOTAL COUNT']) {
-        const rows = dashboardData['TOTAL COUNT'];
-        const yearsRow = rows.find(r => r['Unnamed: 0'] === 'YEAR');
-        const countsRow = rows.find(r => r['Unnamed: 0'] === 'COUNT');
-        if (yearsRow && countsRow) {
-            Object.keys(yearsRow).forEach(key => {
-                if (key !== 'Unnamed: 0') {
-                    const yearVal = yearsRow[key];
-                    const countVal = countsRow[key];
-                    if (yearVal && countVal !== null) {
-                        yearlyBreakdown.push({ year: yearVal.toString(), count: countVal });
-                        totalAll += countVal;
-                    }
-                }
-            });
-        }
-    }
-
     if (dashboardData['NGS']) ngsTotal = processYearData(dashboardData['NGS']).reduce((sum, item) => sum + item.total, 0);
     if (dashboardData['NICS']) nicsTotal = processYearData(dashboardData['NICS']).reduce((sum, item) => sum + item.total, 0);
 
-    // 2. Extract separate year sheets (2024, 2025, 2026, etc)
     Object.keys(dashboardData).forEach(key => {
         if (!['TOTAL COUNT', 'NGS', 'NICS'].includes(key)) {
-            const yearData = processYearData(dashboardData[key]);
-            const yearSum = yearData.reduce((sum, item) => sum + item.total, 0);
-            
-            // Only add if not already in breakdown (from TOTAL COUNT sheet)
-            const yearLabel = key.replace('SAMPLES ANALYSED IN ', '');
-            if (!yearlyBreakdown.find(b => b.year === yearLabel)) {
-                yearlyBreakdown.push({ year: yearLabel, count: yearSum });
-                totalAll += yearSum;
-            }
-            
+            const yearSum = processYearData(dashboardData[key]).reduce((sum, item) => sum + item.total, 0);
+            totalAll += yearSum;
+            yearlyBreakdown.push({ year: key.replace('SAMPLES ANALYSED IN ', ''), count: yearSum });
             if (key === analyticsFilters.year) analyticsTotal = yearSum;
         }
     });
@@ -234,8 +207,7 @@ function renderYearlySummary() {
         </div>
         <div class="summary-stats fade-in" style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));">`;
     
-    // Sort years numerically
-    totals.yearlyBreakdown.sort((a, b) => parseInt(a.year) - parseInt(b.year)).forEach(item => {
+    totals.yearlyBreakdown.sort((a, b) => a.year - b.year).forEach(item => {
         html += `
             <div class="summary-card">
                 <span class="summary-label">${item.year}</span>
