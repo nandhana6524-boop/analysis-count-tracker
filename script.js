@@ -1,13 +1,19 @@
 let dashboardData = {};
 let currentYear = '';
 let currentDataFilters = { month: 'all', test: 'all' };
-let analyticsFilters = { year: '', month: 'all' };
+let analyticsFilters = { year: '', month: 'all', selectedTests: new Set() };
 
 let barChartInstance = null;
 let pieChartInstance = null;
 
 const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-const chartColors = ['#0ea5e9', '#6366f1', '#8b5cf6', '#d946ef', '#f43f5e', '#f59e0b', '#10b981', '#14b8a6', '#06b6d4', '#3b82f6'];
+const chartColors = [
+    '#6366f1', '#8b5cf6', '#ec4899', '#f43f5e', '#f59e0b', 
+    '#10b981', '#14b8a6', '#06b6d4', '#3b82f6', '#2dd4bf'
+];
+
+// Register the datalabels plugin
+Chart.register(ChartDataLabels);
 
 async function init() {
     try {
@@ -15,18 +21,11 @@ async function init() {
         dashboardData = await response.json();
         const years = Object.keys(dashboardData);
         
-        // Calculate Previous Month for Analytics
-        const today = new Date();
-        const prevMonth = today.getMonth() === 0 ? 11 : today.getMonth() - 1;
-        analyticsFilters.month = prevMonth.toString();
-
         setupNav(years);
         setupDataFilters(years);
         setupAnalyticsFilters(years);
         
-        if (years.length > 0) {
-            renderYear(years[0]);
-        }
+        if (years.length > 0) renderYear(years[0]);
     } catch (error) {
         console.error('Error loading data:', error);
     }
@@ -35,7 +34,6 @@ async function init() {
 function setupNav(years) {
     const nav = document.getElementById('year-nav');
     nav.innerHTML = '';
-    
     years.forEach((year) => {
         const btn = document.createElement('button');
         btn.className = 'tab-btn';
@@ -57,7 +55,6 @@ function setupDataFilters(years) {
     const testSelect = document.getElementById('test-filter');
 
     const validYears = years.filter(y => !['TOTAL COUNT', 'NGS', 'NICS'].includes(y));
-    yearSelect.innerHTML = '';
     validYears.forEach(y => {
         const opt = document.createElement('option');
         opt.value = y; opt.textContent = y.replace('SAMPLES ANALYSED IN ', '');
@@ -78,24 +75,76 @@ function setupAnalyticsFilters(years) {
     const monthSelect = document.getElementById('analytics-month-filter');
 
     const validYears = years.filter(y => !['TOTAL COUNT', 'NGS', 'NICS'].includes(y));
-    yearSelect.innerHTML = '';
     validYears.forEach(y => {
         const opt = document.createElement('option');
         opt.value = y; opt.textContent = y.replace('SAMPLES ANALYSED IN ', '');
         yearSelect.appendChild(opt);
     });
     analyticsFilters.year = validYears[0];
-    
-    // Set default month select value
-    monthSelect.value = analyticsFilters.month;
 
-    yearSelect.onchange = (e) => { analyticsFilters.year = e.target.value; updateAnalytics(); };
+    yearSelect.onchange = (e) => { 
+        analyticsFilters.year = e.target.value; 
+        populateTestsChecklist();
+        updateAnalytics(); 
+    };
     monthSelect.onchange = (e) => { analyticsFilters.month = e.target.value; updateAnalytics(); };
+    
+    populateTestsChecklist();
 }
 
-function applyDataFilters() {
-    const container = document.getElementById('table-content');
-    renderTable(dashboardData[currentYear], container);
+function populateTestsChecklist() {
+    const container = document.getElementById('tests-checklist');
+    const data = processYearData(dashboardData[analyticsFilters.year]);
+    const tests = [...new Set(data.map(item => item.category))].sort();
+    
+    container.innerHTML = '';
+    analyticsFilters.selectedTests.clear();
+    
+    tests.forEach(test => {
+        analyticsFilters.selectedTests.add(test);
+        const item = document.createElement('label');
+        item.className = 'check-item';
+        item.innerHTML = `
+            <input type="checkbox" checked onchange="toggleTest('${test}', this.checked)">
+            <span>${test}</span>
+        `;
+        container.appendChild(item);
+    });
+}
+
+function toggleTest(test, isChecked) {
+    if (isChecked) analyticsFilters.selectedTests.add(test);
+    else analyticsFilters.selectedTests.delete(test);
+    updateAnalytics();
+}
+
+function selectAllTests() {
+    const checkboxes = document.querySelectorAll('#tests-checklist input');
+    checkboxes.forEach(cb => {
+        cb.checked = true;
+        const test = cb.nextElementSibling.textContent;
+        analyticsFilters.selectedTests.add(test);
+    });
+    updateAnalytics();
+}
+
+function clearAllTests() {
+    const checkboxes = document.querySelectorAll('#tests-checklist input');
+    checkboxes.forEach(cb => {
+        cb.checked = false;
+        const test = cb.nextElementSibling.textContent;
+        analyticsFilters.selectedTests.delete(test);
+    });
+    updateAnalytics();
+}
+
+function filterChecklist() {
+    const query = document.getElementById('test-search').value.toUpperCase();
+    const items = document.querySelectorAll('.check-item');
+    items.forEach(item => {
+        const text = item.querySelector('span').textContent.toUpperCase();
+        item.style.display = text.includes(query) ? 'flex' : 'none';
+    });
 }
 
 function renderYear(year, btn) {
@@ -106,9 +155,7 @@ function renderYear(year, btn) {
     if (btn) btn.classList.add('active');
     
     const yearFilter = document.getElementById('year-filter');
-    if (yearFilter && !['TOTAL COUNT', 'NGS', 'NICS'].includes(year)) {
-        yearFilter.value = year;
-    }
+    if (yearFilter && !['TOTAL COUNT', 'NGS', 'NICS'].includes(year)) yearFilter.value = year;
 
     const container = document.getElementById('table-content');
     const headerTitle = document.getElementById('table-title');
@@ -129,15 +176,17 @@ function renderYear(year, btn) {
 
 function showAnalytics(btn) {
     document.getElementById('data-view').style.display = 'none';
-    document.getElementById('analytics-view').style.display = 'block';
+    document.getElementById('analytics-view').style.display = 'flex';
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    if (btn) btn.classList.add('active');
+    btn.classList.add('active');
     updateAnalytics();
 }
 
 function updateAnalytics() {
-    const rawData = dashboardData[analyticsFilters.year];
-    const data = processYearData(rawData);
+    let data = processYearData(dashboardData[analyticsFilters.year]);
+    // Filter by selected tests
+    data = data.filter(item => analyticsFilters.selectedTests.has(item.category));
+    
     updateBarChart(data);
     updatePieChart(data);
 }
@@ -180,6 +229,10 @@ function renderStatCards(rows, container) {
     container.innerHTML = html + '</div>';
 }
 
+function applyDataFilters() {
+    renderTable(dashboardData[currentYear], document.getElementById('table-content'));
+}
+
 function renderTable(dataRows, container) {
     let data = processYearData(dataRows);
     if (currentDataFilters.test !== 'all') data = data.filter(item => item.category === currentDataFilters.test);
@@ -196,28 +249,81 @@ function updateBarChart(data) {
     const ctx = document.getElementById('monthlyTotalChart').getContext('2d');
     const totals = new Array(12).fill(0);
     data.forEach(item => item.monthly.forEach((v, i) => totals[i] += v));
+    
+    const overallTotal = totals.reduce((a, b) => a + b, 0);
+    document.getElementById('bar-total-label').textContent = `Total: ${overallTotal}`;
+
     if (barChartInstance) barChartInstance.destroy();
     barChartInstance = new Chart(ctx, {
         type: 'bar',
-        data: { labels: months, datasets: [{ label: 'Total Samples', data: totals, backgroundColor: 'rgba(14, 165, 233, 0.7)', borderColor: '#0ea5e9', borderWidth: 1, borderRadius: 8 }] },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: 'rgba(0, 0, 0, 0.05)' }, ticks: { color: '#64748b' } }, x: { grid: { display: false }, ticks: { color: '#64748b' } } } }
+        data: {
+            labels: months,
+            datasets: [{
+                label: 'Samples',
+                data: totals,
+                backgroundColor: 'rgba(99, 102, 241, 0.8)',
+                borderRadius: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                datalabels: {
+                    anchor: 'end',
+                    align: 'top',
+                    color: '#4338ca',
+                    font: { weight: 'bold' }
+                }
+            },
+            scales: {
+                y: { beginAtZero: true, grid: { display: false }, ticks: { display: false } },
+                x: { grid: { display: false }, ticks: { font: { weight: '600' } } }
+            }
+        }
     });
 }
 
 function updatePieChart(data) {
     const ctx = document.getElementById('testPieChart').getContext('2d');
-    const headerTitle = document.getElementById('pie-chart-title');
     let pData = [], pLabels = [];
     data.forEach(item => {
         let val = analyticsFilters.month === 'all' ? item.total : item.monthly[parseInt(analyticsFilters.month)];
         if (val > 0) { pData.push(val); pLabels.push(item.category); }
     });
-    headerTitle.textContent = analyticsFilters.month === 'all' ? "Yearly Test Distribution" : `Test Distribution (${months[analyticsFilters.month]})`;
+    
+    const overallTotal = pData.reduce((a, b) => a + b, 0);
+    document.getElementById('pie-total-label').textContent = `Total: ${overallTotal}`;
+
     if (pieChartInstance) pieChartInstance.destroy();
     pieChartInstance = new Chart(ctx, {
         type: 'pie',
-        data: { labels: pLabels, datasets: [{ data: pData, backgroundColor: chartColors, borderWidth: 2, borderColor: '#ffffff' }] },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { boxWidth: 12, padding: 10, font: { size: 10 } } } } }
+        data: {
+            labels: pLabels,
+            datasets: [{
+                data: pData,
+                backgroundColor: chartColors,
+                borderWidth: 2,
+                borderColor: '#ffffff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom', labels: { boxWidth: 12, padding: 20, font: { size: 11, weight: '600' } } },
+                datalabels: {
+                    color: '#fff',
+                    font: { weight: 'bold', size: 12 },
+                    formatter: (value, ctx) => {
+                        const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                        const perc = (value * 100 / total).toFixed(0);
+                        return perc > 5 ? value : '';
+                    }
+                }
+            }
+        }
     });
 }
 
