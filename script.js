@@ -40,8 +40,8 @@ function setupFilters(years) {
     const monthSelect = document.getElementById('month-filter');
     const testSelect = document.getElementById('test-filter');
 
-    // Populate years
-    years.forEach(year => {
+    // Populate years (excluding special non-year sheets)
+    years.filter(year => !['TOTAL COUNT', 'NGS', 'NICS'].includes(year)).forEach(year => {
         const option = document.createElement('option');
         option.value = year;
         option.textContent = year.replace('SAMPLES ANALYSED IN ', '');
