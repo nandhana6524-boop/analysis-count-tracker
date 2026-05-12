@@ -26,7 +26,11 @@ async function init() {
         setupAnalyticsFilters(years);
         updateSummaryStats();
         
-        if (years.length > 0) renderYear(years[0]);
+        // Default view: TOTAL COUNT or the first year tab
+        const defaultView = years.includes('TOTAL COUNT') ? 'TOTAL COUNT' : years[0];
+        const targetBtn = Array.from(document.querySelectorAll('.tab-btn'))
+            .find(btn => btn.textContent === defaultView);
+        renderYear(defaultView, targetBtn);
     } catch (error) {
         console.error('Error loading data:', error);
     }
@@ -65,10 +69,13 @@ function updateSummaryStats() {
 function setupNav(years) {
     const nav = document.getElementById('year-nav');
     nav.innerHTML = '';
-    years.forEach((year) => {
+    // Filter out sheets that look like years (contain 202x)
+    const categorySheets = years.filter(year => !year.includes('202'));
+    
+    categorySheets.forEach((year) => {
         const btn = document.createElement('button');
         btn.className = 'tab-btn';
-        btn.textContent = year.replace('SAMPLES ANALYSED IN ', '');
+        btn.textContent = year;
         btn.onclick = () => renderYear(year, btn);
         nav.appendChild(btn);
     });
