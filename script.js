@@ -78,7 +78,7 @@ function populateTestDropdown(dataRows) {
     const testSelect = document.getElementById('test-filter');
     const tests = [...new Set(dataRows
         .filter(row => row['Unnamed: 1'] && row['Unnamed: 1'] !== 'TOTAL' && row['Unnamed: 1'] !== 'S. No.' && !row['Unnamed: 1'].toString().includes('Sheet') && row['Unnamed: 1'] !== 'TEST NAME ')
-        .map(row => row['Unnamed: 1']))].sort();
+        .map(row => row['Unnamed: 1'].toString().toUpperCase()))].sort();
     
     // Clear and keep "All Tests"
     testSelect.innerHTML = '<option value="all">All Tests</option>';
@@ -156,7 +156,7 @@ function renderTable(dataRows, container) {
             ].map(v => (typeof v === 'number' ? v : 0));
 
             return {
-                category: row['Unnamed: 1'],
+                category: row['Unnamed: 1'].toString().toUpperCase(),
                 monthly: monthlyValues,
                 total: monthlyValues.reduce((a, b) => a + b, 0)
             };
