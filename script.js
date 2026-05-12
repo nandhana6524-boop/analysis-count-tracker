@@ -1,6 +1,5 @@
 let dashboardData = {};
 let currentYear = '';
-let chartInstance = null;
 
 const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -42,78 +41,30 @@ function renderYear(year, btn) {
 
     const dataRows = dashboardData[year];
     
-    // Process data for table and chart
-    // We assume Unnamed: 1 is the category and Unnamed: 2-13 are Jan-Dec
-    const processedData = dataRows.filter(row => row['Unnamed: 1'] && row['Unnamed: 1'] !== 'TOTAL' && row['Unnamed: 1'] !== 'S. No.' && !row['Unnamed: 1'].toString().includes('Sheet')).map(row => {
-        return {
-            category: row['Unnamed: 1'],
-            monthly: [
+    // Process data for table
+    // Filter out rows that are just headers, totals, or are empty
+    const processedData = dataRows
+        .filter(row => row['Unnamed: 1'] && row['Unnamed: 1'] !== 'TOTAL' && row['Unnamed: 1'] !== 'S. No.' && !row['Unnamed: 1'].toString().includes('Sheet') && row['Unnamed: 1'] !== 'TEST NAME ')
+        .map(row => {
+            const monthlyValues = [
                 row['Unnamed: 2'], row['Unnamed: 3'], row['Unnamed: 4'], row['Unnamed: 5'],
                 row['Unnamed: 6'], row['Unnamed: 7'], row['Unnamed: 8'], row['Unnamed: 9'],
                 row['Unnamed: 10'], row['Unnamed: 11'], row['Unnamed: 12'], row['Unnamed: 13']
-            ].map(v => typeof v === 'number' ? v : 0)
-        };
-    });
+            ].map(v => {
+                if (typeof v === 'number') return v;
+                // Try to parse if it's a string, but usually we just want numbers
+                return 0;
+            });
 
-    // Find the TOTAL row for trends
-    const totalRow = dataRows.find(row => row['Unnamed: 1'] === 'TOTAL');
-    let trends = [0,0,0,0,0,0,0,0,0,0,0,0];
-    if (totalRow) {
-        trends = [
-            totalRow['Unnamed: 2'], totalRow['Unnamed: 3'], totalRow['Unnamed: 4'], totalRow['Unnamed: 5'],
-            totalRow['Unnamed: 6'], totalRow['Unnamed: 7'], totalRow['Unnamed: 8'], totalRow['Unnamed: 9'],
-            totalRow['Unnamed: 10'], totalRow['Unnamed: 11'], totalRow['Unnamed: 12'], totalRow['Unnamed: 13']
-        ].map(v => typeof v === 'number' ? v : 0);
-    }
+            return {
+                category: row['Unnamed: 1'],
+                monthly: monthlyValues,
+                total: monthlyValues.reduce((a, b) => a + b, 0)
+            };
+        })
+        .filter(item => item.total > 0); // REMOVE ROWS WITH ZERO TOTAL
 
-    updateChart(trends);
     updateTable(processedData);
-}
-
-function updateChart(trends) {
-    const ctx = document.getElementById('mainChart').getContext('2d');
-    
-    if (chartInstance) {
-        chartInstance.destroy();
-    }
-
-    chartInstance = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: months,
-            datasets: [{
-                label: 'Total Samples',
-                data: trends,
-                borderColor: '#38bdf8',
-                backgroundColor: 'rgba(56, 189, 248, 0.1)',
-                fill: true,
-                tension: 0.4,
-                borderWidth: 3,
-                pointBackgroundColor: '#38bdf8',
-                pointRadius: 5
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: false
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    grid: { color: 'rgba(0, 0, 0, 0.05)' },
-                    ticks: { color: '#64748b' }
-                },
-                x: {
-                    grid: { display: false },
-                    ticks: { color: '#64748b' }
-                }
-            }
-        }
-    });
 }
 
 function updateTable(data) {
@@ -130,12 +81,11 @@ function updateTable(data) {
     `;
 
     data.forEach(item => {
-        const rowTotal = item.monthly.reduce((a, b) => a + b, 0);
         html += `
             <tr>
                 <td style="font-weight: 600;">${item.category}</td>
                 ${item.monthly.map(v => `<td>${v || '-'}</td>`).join('')}
-                <td style="font-weight: 800; color: var(--accent-color);">${rowTotal}</td>
+                <td style="font-weight: 800; color: var(--accent-color);">${item.total}</td>
             </tr>
         `;
     });
