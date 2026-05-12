@@ -238,24 +238,37 @@ function updateBarChart(data) {
 
 function updatePieChart(data) {
     const ctx = document.getElementById('testPieChart').getContext('2d');
+    const headerTitle = document.querySelector('#testPieChart').parentElement.querySelector('h3');
     
-    // Calculate test distribution for the selected month (or all)
     let pieData = [];
     let pieLabels = [];
-    
-    data.forEach(item => {
-        let value = 0;
-        if (currentFilters.month === 'all') {
-            value = item.total;
-        } else {
-            value = item.monthly[parseInt(currentFilters.month)];
+    let chartTitle = "";
+
+    if (currentFilters.test === 'all') {
+        // Mode 1: Distribution of TESTS for the selected month(s)
+        chartTitle = currentFilters.month === 'all' ? "Yearly Test Distribution" : `Test Distribution (${months[currentFilters.month]})`;
+        data.forEach(item => {
+            let value = currentFilters.month === 'all' ? item.total : item.monthly[parseInt(currentFilters.month)];
+            if (value > 0) {
+                pieData.push(value);
+                pieLabels.push(item.category);
+            }
+        });
+    } else {
+        // Mode 2: Distribution of MONTHS for the selected test
+        const selectedTestData = data.find(item => item.category === currentFilters.test);
+        chartTitle = `Monthly Distribution: ${currentFilters.test}`;
+        if (selectedTestData) {
+            selectedTestData.monthly.forEach((val, i) => {
+                if (val > 0) {
+                    pieData.push(val);
+                    pieLabels.push(months[i]);
+                }
+            });
         }
-        
-        if (value > 0) {
-            pieData.push(value);
-            pieLabels.push(item.category);
-        }
-    });
+    }
+
+    headerTitle.textContent = chartTitle;
 
     if (pieChartInstance) pieChartInstance.destroy();
 
@@ -276,7 +289,7 @@ function updatePieChart(data) {
             plugins: {
                 legend: {
                     position: 'right',
-                    labels: { boxWidth: 12, padding: 15, font: { size: 11 } }
+                    labels: { boxWidth: 12, padding: 10, font: { size: 10 } }
                 },
                 tooltip: {
                     callbacks: {
